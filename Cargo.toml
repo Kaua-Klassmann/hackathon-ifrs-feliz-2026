@@ -24,7 +24,7 @@ sea-orm = { version = "2.0.0", features = ["sqlx-postgres", "runtime-tokio"] }
 serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1.0.150"
 tokio = { version = "1.52.3", features = ["rt-multi-thread", "macros", "sync"] }
-tower-http = { version = "0.7.0", features = ["catch-panic", "cors"] }
+tower-http = { version = "0.7.0", features = ["catch-panic", "compression-full", "cors"] }
 validator = { version = "0.20.0", features = ["derive"] }
 
 [dev-dependencies]
