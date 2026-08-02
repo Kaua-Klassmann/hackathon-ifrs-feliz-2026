@@ -1,4 +1,5 @@
 use tokio::net::TcpListener;
+use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 use crate::configs::app::get_app_config;
 
@@ -19,6 +20,16 @@ mod tests;
 async fn main() {
     #[cfg(debug_assertions)]
     dotenvy::dotenv().ok();
+
+    tracing_subscriber::registry()
+        .with(
+            tracing_subscriber::fmt::layer()
+                .json()
+                .with_target(false)
+                .with_span_list(false),
+        )
+        .with(tracing_subscriber::filter::Targets::new().with_target("api", tracing::Level::INFO))
+        .init();
 
     let app = app::create_app().await;
 
