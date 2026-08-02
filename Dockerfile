@@ -8,8 +8,9 @@ RUN cargo build --release
 
 FROM alpine:3.22.5
 
-RUN apk add --no-cache ca-certificates
+RUN apk add --no-cache ca-certificates jq
 
 COPY --from=builder /app/target/release/hackathon_backend /usr/local/bin/app
 
+ENTRYPOINT ["sh", "-c", "export DATABASE_URL=\"postgres://${DB_USER}:$(printf '%s' \"$DB_PASSWORD\" | jq -sRr @uri)@${DB_HOST}:${DB_PORT}/${DB_NAME}\" && exec \"$@\"", "--"]
 CMD ["app"]
