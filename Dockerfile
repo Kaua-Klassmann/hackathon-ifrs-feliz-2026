@@ -12,5 +12,5 @@ RUN apk add --no-cache ca-certificates jq
 
 COPY --from=builder /app/target/release/hackathon_backend /usr/local/bin/app
 
-ENTRYPOINT ["sh", "-c", "export DATABASE_URL=\"postgres://${DB_USER}:$(printf '%s' \"$DB_PASSWORD\" | jq -sRr @uri)@${DB_HOST}:${DB_PORT}/${DB_NAME}\" && exec \"$@\"", "--"]
+ENTRYPOINT ["sh", "-c", "export DATABASE_URL=\"postgres://${DB_USER}:$(printf '%s' \"$DB_PASSWORD\" | jq -sRr @uri)@${DB_HOST}:${DB_PORT}/${DB_NAME}${DB_SSL_MODE:+?sslmode=${DB_SSL_MODE}}\" && exec \"$@\"", "--"]
 CMD ["app"]
