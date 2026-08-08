@@ -7,7 +7,6 @@ use argon2::{
     Argon2, PasswordHash, PasswordHasher, PasswordVerifier,
     password_hash::{SaltString, rand_core::OsRng},
 };
-use sea_orm::sqlx::types::Uuid;
 
 pub struct AuthService<UR: UsersRepositoryTrait = UsersRepository> {
     pub argon2: Argon2<'static>,
@@ -47,11 +46,12 @@ impl<UR: UsersRepositoryTrait> AuthService<UR> {
         }
 
         let user = user_option.unwrap();
+        let token = JwtClaims::new(user.id).gen_token();
 
-        Ok(JwtClaims::new(user.id).gen_token())
+        Ok(token)
     }
 
-    pub async fn register(&self, payload: RegisterUserPayload) -> Result<Uuid, DomainError> {
+    pub async fn register(&self, payload: RegisterUserPayload) -> Result<(), DomainError> {
         let exists = self
             .user_repository
             .exists_by_email(&payload.email)

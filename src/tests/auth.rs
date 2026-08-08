@@ -93,7 +93,28 @@ mod register {
     use crate::{error::DomainError, repositories::users::RegisterUserPayload};
 
     #[tokio::test]
-    async fn success() {}
+    async fn success() {
+        let mut service = super::factory();
+
+        service
+            .user_repository
+            .expect_exists_by_email()
+            .returning(|_| Ok(false));
+
+        service
+            .user_repository
+            .expect_register()
+            .returning(|_| Ok(()));
+
+        let result = service
+            .register(RegisterUserPayload {
+                email: "test@gmail.com".to_string(),
+                password: "password".to_string(),
+            })
+            .await;
+
+        assert!(result.is_ok());
+    }
 
     #[tokio::test]
     async fn error_user_already_exists() {

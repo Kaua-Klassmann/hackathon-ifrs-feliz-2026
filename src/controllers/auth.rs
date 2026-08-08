@@ -1,6 +1,6 @@
 use std::sync::{Arc, LazyLock};
 
-use axum::{Json, extract::State, response::IntoResponse};
+use axum::{Json, extract::State, http::StatusCode, response::IntoResponse};
 use regex::Regex;
 use serde::Deserialize;
 use validator::Validate;
@@ -47,10 +47,10 @@ impl AuthController {
             return DomainError::UnprocessableEntity(errors).into_response();
         }
 
-        let response = service.login(&payload.email, &payload.password).await;
+        let result = service.login(&payload.email, &payload.password).await;
 
-        match response {
-            Ok(res) => (axum::http::StatusCode::OK, Json(res)).into_response(),
+        match result {
+            Ok(res) => (StatusCode::OK, Json(res)).into_response(),
             Err(err) => err.into_response(),
         }
     }
@@ -63,15 +63,15 @@ impl AuthController {
             return DomainError::UnprocessableEntity(errors).into_response();
         }
 
-        let response = service
+        let result = service
             .register(RegisterUserPayload {
                 email: payload.email,
                 password: payload.password,
             })
             .await;
 
-        match response {
-            Ok(res) => (axum::http::StatusCode::OK, Json(res)).into_response(),
+        match result {
+            Ok(_) => (StatusCode::OK, "").into_response(),
             Err(err) => err.into_response(),
         }
     }

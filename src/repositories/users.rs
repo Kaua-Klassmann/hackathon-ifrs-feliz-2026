@@ -22,7 +22,7 @@ pub struct RegisterUserPayload {
 pub trait UsersRepositoryTrait {
     async fn exists_by_email(&self, email: &str) -> Result<bool, DbErr>;
     async fn get_to_login(&self, email: &str) -> Result<Option<GetToLoginUserResponse>, DbErr>;
-    async fn register(&self, payload: RegisterUserPayload) -> Result<Uuid, DbErr>;
+    async fn register(&self, payload: RegisterUserPayload) -> Result<(), DbErr>;
 }
 
 pub struct UsersRepository {
@@ -51,11 +51,11 @@ impl UsersRepositoryTrait for UsersRepository {
             .await
     }
 
-    async fn register(&self, payload: RegisterUserPayload) -> Result<Uuid, DbErr> {
-        let res = users::Entity::insert(payload.into_active_model())
-            .exec(&self.db)
+    async fn register(&self, payload: RegisterUserPayload) -> Result<(), DbErr> {
+        users::Entity::insert(payload.into_active_model())
+            .exec_without_returning(&self.db)
             .await?;
 
-        Ok(res.last_insert_id)
+        Ok(())
     }
 }
