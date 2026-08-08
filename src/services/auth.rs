@@ -1,0 +1,82 @@
+use crate::{
+    error::DomainError,
+    jwt::JwtClaims,
+    repositories::users::{RegisterUserPayload, UsersRepository, UsersRepositoryTrait},
+};
+use argon2::{
+    Argon2, PasswordHash, PasswordHasher, PasswordVerifier,
+    password_hash::{SaltString, rand_core::OsRng},
+};
+use sea_orm::sqlx::types::Uuid;
+
+pub struct AuthService<UR: UsersRepositoryTrait = UsersRepository> {
+    pub argon2: Argon2<'static>,
+    pub user_repository: UR,
+}
+
+impl AuthService<UsersRepository> {
+    pub fn new() -> Self {
+        Self {
+            argon2: Argon2::default(),
+            user_repository: UsersRepository::new(),
+        }
+    }
+}
+
+impl<UR: UsersRepositoryTrait> AuthService<UR> {
+    pub async fn login(&self, email: &str, password: &str) -> Result<String, DomainError> {
+        let user_option = self
+            .user_repository
+            .get_to_login(email)
+            .await
+            .map_err(|err| DomainError::InternalServerError(err.to_string()))?;
+
+        let password_verified = self.argon2.verify_password(
+            password.as_bytes(),
+            &PasswordHash::new(
+                &user_option
+                    .as_ref()
+                    .map(|u| &u.password)
+                    .unwrap_or(&"$argon2id$v=19$m=19456,t=2,p=1$ZHVtbXktc2FsdC0xMjM0NTY$y7J8J6XKQK3m6YQx5XwJvQ8vQmYQh6jXQ5Q5XQ5Q5Q5Q".to_string()),
+            )
+            .map_err(|err| DomainError::InternalServerError(err.to_string()))?,
+        );
+
+        if user_option.is_none() || password_verified.is_err() {
+            return Err(DomainError::UserInvalidCredentials);
+        }
+
+        let user = user_option.unwrap();
+
+        Ok(JwtClaims::new(user.id).gen_token())
+    }
+
+    pub async fn register(&self, payload: RegisterUserPayload) -> Result<Uuid, DomainError> {
+        let exists = self
+            .user_repository
+            .exists_by_email(&payload.email)
+            .await
+            .map_err(|err| DomainError::InternalServerError(err.to_string()))?;
+
+        if exists {
+            return Err(DomainError::UserAlreadyExists);
+        }
+
+        let password = self
+            .argon2
+            .hash_password(
+                payload.password.as_bytes(),
+                &SaltString::generate(&mut OsRng),
+            )
+            .map_err(|err| DomainError::InternalServerError(err.to_string()))?
+            .to_string();
+
+        self.user_repository
+            .register(RegisterUserPayload {
+                email: payload.email,
+                password,
+            })
+            .await
+            .map_err(|err| DomainError::InternalServerError(err.to_string()))
+    }
+}
