@@ -7,6 +7,14 @@ use argon2::{
     Argon2, PasswordHash, PasswordHasher, PasswordVerifier,
     password_hash::{SaltString, rand_core::OsRng},
 };
+use serde::Serialize;
+
+#[derive(Serialize)]
+pub struct LoginResponse {
+    email: String,
+    name: String,
+    token: String,
+}
 
 pub struct AuthService<UR: UsersRepositoryTrait = UsersRepository> {
     pub argon2: Argon2<'static>,
@@ -23,7 +31,7 @@ impl AuthService<UsersRepository> {
 }
 
 impl<UR: UsersRepositoryTrait> AuthService<UR> {
-    pub async fn login(&self, email: &str, password: &str) -> Result<String, DomainError> {
+    pub async fn login(&self, email: &str, password: &str) -> Result<LoginResponse, DomainError> {
         let user_option = self
             .user_repository
             .get_to_login(email)
@@ -48,10 +56,17 @@ impl<UR: UsersRepositoryTrait> AuthService<UR> {
         let user = user_option.unwrap();
         let token = JwtClaims::new(user.id).gen_token();
 
-        Ok(token)
+        Ok(LoginResponse {
+            name: user.name,
+            token,
+            email: email.to_string(),
+        })
     }
 
-    pub async fn register(&self, payload: RegisterUserPayload) -> Result<(), DomainError> {
+    pub async fn register(
+        &self,
+        payload: RegisterUserPayload,
+    ) -> Result<LoginResponse, DomainError> {
         let exists = self
             .user_repository
             .exists_by_email(&payload.email)
@@ -71,12 +86,22 @@ impl<UR: UsersRepositoryTrait> AuthService<UR> {
             .map_err(|err| DomainError::InternalServerError(err.to_string()))?
             .to_string();
 
-        self.user_repository
+        let user = self
+            .user_repository
             .register(RegisterUserPayload {
-                email: payload.email,
+                name: payload.name.clone(),
+                email: payload.email.clone(),
                 password,
             })
             .await
-            .map_err(|err| DomainError::InternalServerError(err.to_string()))
+            .map_err(|err| DomainError::InternalServerError(err.to_string()))?;
+
+        let token = JwtClaims::new(user).gen_token();
+
+        Ok(LoginResponse {
+            token,
+            email: payload.email,
+            name: payload.name,
+        })
     }
 }

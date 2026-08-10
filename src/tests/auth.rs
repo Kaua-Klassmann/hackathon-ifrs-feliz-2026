@@ -38,6 +38,7 @@ mod login {
             .returning(|_| {
                 Ok(Some(GetToLoginUserResponse {
                     id: Uuid::default(),
+                    name: "Test User".to_string(),
                     password: generate_hashed_password("correct_password"),
                 }))
             });
@@ -60,7 +61,7 @@ mod login {
 
         assert!(result.is_err());
         assert!(matches!(
-            result.unwrap_err(),
+            result.err().unwrap(),
             DomainError::UserInvalidCredentials
         ));
     }
@@ -75,6 +76,7 @@ mod login {
             .returning(|_| {
                 Ok(Some(GetToLoginUserResponse {
                     id: Uuid::default(),
+                    name: "Test User".to_string(),
                     password: generate_hashed_password("wrong_password"),
                 }))
             });
@@ -83,13 +85,15 @@ mod login {
 
         assert!(result.is_err());
         assert!(matches!(
-            result.unwrap_err(),
+            result.err().unwrap(),
             DomainError::UserInvalidCredentials
         ));
     }
 }
 
 mod register {
+    use sea_orm::sqlx::types::Uuid;
+
     use crate::{error::DomainError, repositories::users::RegisterUserPayload};
 
     #[tokio::test]
@@ -104,11 +108,12 @@ mod register {
         service
             .user_repository
             .expect_register()
-            .returning(|_| Ok(()));
+            .returning(|_| Ok(Uuid::default()));
 
         let result = service
             .register(RegisterUserPayload {
                 email: "test@gmail.com".to_string(),
+                name: "Test User".to_string(),
                 password: "password".to_string(),
             })
             .await;
@@ -128,13 +133,14 @@ mod register {
         let result = service
             .register(RegisterUserPayload {
                 email: "test@gmail.com".to_string(),
+                name: "Test User".to_string(),
                 password: "password".to_string(),
             })
             .await;
 
         assert!(result.is_err());
         assert!(matches!(
-            result.unwrap_err(),
+            result.err().unwrap(),
             DomainError::UserAlreadyExists
         ));
     }

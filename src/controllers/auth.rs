@@ -28,6 +28,8 @@ pub struct LoginPayload {
 pub struct RegisterPayload {
     #[validate(email(message = "Email inválido"))]
     pub email: String,
+    #[validate(length(min = 3, message = "Nome não pode contar menos de 3 caracteres"))]
+    pub name: String,
     #[validate(length(min = 8, message = "Senha deve ter no mínimo 8 caracteres"))]
     #[validate(regex(
         path = *PASSWORD_REGEX,
@@ -66,12 +68,13 @@ impl AuthController {
         let result = service
             .register(RegisterUserPayload {
                 email: payload.email,
+                name: payload.name,
                 password: payload.password,
             })
             .await;
 
         match result {
-            Ok(_) => (StatusCode::OK, "").into_response(),
+            Ok(res) => (StatusCode::OK, Json(res)).into_response(),
             Err(err) => err.into_response(),
         }
     }

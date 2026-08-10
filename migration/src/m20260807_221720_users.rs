@@ -21,6 +21,7 @@ impl MigrationTrait for Migration {
                             .primary_key()
                             .default(PgFunc::gen_random_uuid()),
                     )
+                    .col(ColumnDef::new("name").string_len(40).not_null())
                     .col(ColumnDef::new("email").string().not_null().unique_key())
                     .col(ColumnDef::new("password").string().not_null())
                     .col(

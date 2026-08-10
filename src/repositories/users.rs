@@ -8,12 +8,14 @@ use sea_orm::{
 #[sea_orm(entity = "users::Entity")]
 pub struct GetToLoginUserResponse {
     pub id: Uuid,
+    pub name: String,
     pub password: String,
 }
 
 #[derive(DeriveIntoActiveModel)]
 #[sea_orm(active_model = "users::ActiveModel")]
 pub struct RegisterUserPayload {
+    pub name: String,
     pub email: String,
     pub password: String,
 }
@@ -22,7 +24,7 @@ pub struct RegisterUserPayload {
 pub trait UsersRepositoryTrait {
     async fn exists_by_email(&self, email: &str) -> Result<bool, DbErr>;
     async fn get_to_login(&self, email: &str) -> Result<Option<GetToLoginUserResponse>, DbErr>;
-    async fn register(&self, payload: RegisterUserPayload) -> Result<(), DbErr>;
+    async fn register(&self, payload: RegisterUserPayload) -> Result<Uuid, DbErr>;
 }
 
 pub struct UsersRepository {
@@ -51,11 +53,11 @@ impl UsersRepositoryTrait for UsersRepository {
             .await
     }
 
-    async fn register(&self, payload: RegisterUserPayload) -> Result<(), DbErr> {
-        users::Entity::insert(payload.into_active_model())
-            .exec_without_returning(&self.db)
+    async fn register(&self, payload: RegisterUserPayload) -> Result<Uuid, DbErr> {
+        let result = users::Entity::insert(payload.into_active_model())
+            .exec(&self.db)
             .await?;
 
-        Ok(())
+        Ok(result.last_insert_id)
     }
 }
