@@ -56,9 +56,42 @@ jobs:
                     ContainerPort: 8080
           EOF
 
+      - name: Register task definition
+        id: register-task-def
+        run: |
+          TASK_DEF_ARN=$(aws ecs register-task-definition \
+            --cli-input-json file://${{ steps.render.outputs.task-definition }} \
+            --query "taskDefinition.taskDefinitionArn" --output text)
+          echo "arn=$TASK_DEF_ARN" >> "$GITHUB_OUTPUT"
+
+      - name: Run database migrations
+        run: |
+          NETWORK_CONFIG=$(aws ecs describe-services \
+            --cluster ${{ vars.ECS_CLUSTER }} --services ${{ vars.ECS_SERVICE }} \
+            --query "services[0].networkConfiguration" --output json)
+
+          TASK_ARN=$(aws ecs run-task \
+            --cluster ${{ vars.ECS_CLUSTER }} \
+            --task-definition ${{ steps.register-task-def.outputs.arn }} \
+            --launch-type FARGATE \
+            --network-configuration "$NETWORK_CONFIG" \
+            --overrides "{\"containerOverrides\":[{\"name\":\"${{ vars.ECS_CLUSTER }}\",\"command\":[\"migration\",\"up\"]}]}" \
+            --query "tasks[0].taskArn" --output text)
+
+          echo "Migration task: $TASK_ARN"
+          aws ecs wait tasks-stopped --cluster ${{ vars.ECS_CLUSTER }} --tasks "$TASK_ARN"
+
+          EXIT_CODE=$(aws ecs describe-tasks --cluster ${{ vars.ECS_CLUSTER }} --tasks "$TASK_ARN" \
+            --query "tasks[0].containers[0].exitCode" --output text)
+
+          if [ "$EXIT_CODE" != "0" ]; then
+            echo "Migration failed with exit code $EXIT_CODE — aborting deploy."
+            exit 1
+          fi
+
       - uses: aws-actions/amazon-ecs-deploy-task-definition@v2
         with:
-          task-definition: ${{ steps.render.outputs.task-definition }}
+          task-definition: ${{ steps.register-task-def.outputs.arn }}
           cluster: ${{ vars.ECS_CLUSTER }}
           service: ${{ vars.ECS_SERVICE }}
           wait-for-service-stability: true
