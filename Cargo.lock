@@ -1580,7 +1580,6 @@ dependencies = [
  "dotenvy",
  "jsonwebtoken",
  "mockall",
- "regex",
  "sea-orm",
  "serde",
  "serde_json",
