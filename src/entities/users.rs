@@ -4,20 +4,18 @@ use sea_orm::entity::prelude::*;
 
 #[sea_orm::model]
 #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
-#[sea_orm(schema_name = "public", table_name = "product")]
+#[sea_orm(schema_name = "public", table_name = "users")]
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
     pub id: Uuid,
     pub name: String,
-    pub id_user: Uuid,
-    #[sea_orm(
-        belongs_to,
-        from = "id_user",
-        to = "id",
-        on_update = "NoAction",
-        on_delete = "Cascade"
-    )]
-    pub user: BelongsTo<super::user::Entity>,
+    #[sea_orm(unique)]
+    pub email: String,
+    pub password: String,
+    #[sea_orm(column_name = "createdAt")]
+    pub created_at: DateTime,
+    #[sea_orm(column_name = "updatedAt")]
+    pub updated_at: DateTime,
 }
 
 impl ActiveModelBehavior for ActiveModel {}

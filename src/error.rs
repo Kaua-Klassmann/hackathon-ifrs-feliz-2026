@@ -5,8 +5,9 @@ use validator::ValidationErrors;
 #[cfg_attr(test, derive(Debug))]
 pub enum DomainError {
     InternalServerError(String),
-    ProductNotFound,
     UnprocessableEntity(ValidationErrors),
+    UserAlreadyExists,
+    UserInvalidCredentials,
 }
 
 impl IntoResponse for DomainError {
@@ -19,9 +20,13 @@ impl IntoResponse for DomainError {
                     Json(json!({"error": "Erro interno do servidor"})),
                 )
             }
-            DomainError::ProductNotFound => (
-                StatusCode::NOT_FOUND,
-                Json(json!({"error": "Produto não encontrado"})),
+            DomainError::UserAlreadyExists => (
+                StatusCode::CONFLICT,
+                Json(json!({"error": "Usuário já cadastrado"})),
+            ),
+            DomainError::UserInvalidCredentials => (
+                StatusCode::UNAUTHORIZED,
+                Json(json!({"error": "Credenciais inválidas"})),
             ),
             DomainError::UnprocessableEntity(err) => {
                 (StatusCode::UNPROCESSABLE_ENTITY, Json(json!(err)))

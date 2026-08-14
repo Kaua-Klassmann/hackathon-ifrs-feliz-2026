@@ -9,6 +9,7 @@ mod connections;
 mod controllers;
 mod entities;
 mod error;
+mod jwt;
 mod middlewares;
 mod repositories;
 mod routes;
