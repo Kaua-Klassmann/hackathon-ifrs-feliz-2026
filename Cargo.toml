@@ -1,6 +1,5 @@
 [workspace]
-members = [".", "migration"]
-resolver = "2"
+members = ["migration"]
 
 [package]
 name = "hackathon_backend"

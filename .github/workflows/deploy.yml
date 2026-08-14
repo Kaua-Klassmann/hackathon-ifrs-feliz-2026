@@ -42,20 +42,6 @@ jobs:
           container-name: ${{ vars.ECS_CLUSTER }}
           image: ${{ steps.ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }}
 
-      - name: Render CodeDeploy AppSpec
-        run: |
-          cat > appspec.yaml <<EOF
-          version: 0.0
-          Resources:
-            - TargetService:
-                Type: AWS::ECS::Service
-                Properties:
-                  TaskDefinition: <TASK_DEFINITION>
-                  LoadBalancerInfo:
-                    ContainerName: "${{ vars.ECS_CLUSTER }}"
-                    ContainerPort: 8080
-          EOF
-
       - name: Register task definition
         id: register-task-def
         run: |
@@ -89,12 +75,28 @@ jobs:
             exit 1
           fi
 
-      - uses: aws-actions/amazon-ecs-deploy-task-definition@v2
-        with:
-          task-definition: ${{ steps.register-task-def.outputs.arn }}
-          cluster: ${{ vars.ECS_CLUSTER }}
-          service: ${{ vars.ECS_SERVICE }}
-          wait-for-service-stability: true
-          codedeploy-appspec: appspec.yaml
-          codedeploy-application: AppECS-${{ vars.ECS_CLUSTER }}-${{ vars.ECS_SERVICE }}
-          codedeploy-deployment-group: DgpECS-${{ vars.ECS_CLUSTER }}-${{ vars.ECS_SERVICE }}
+      - name: Deploy via CodeDeploy (Blue/Green)
+        run: |
+          cat > appspec.yaml <<EOF
+          version: 0.0
+          Resources:
+            - TargetService:
+                Type: AWS::ECS::Service
+                Properties:
+                  TaskDefinition: "${{ steps.register-task-def.outputs.arn }}"
+                  LoadBalancerInfo:
+                    ContainerName: "${{ vars.ECS_CLUSTER }}"
+                    ContainerPort: 8080
+          EOF
+
+          jq -n --arg content "$(cat appspec.yaml)" \
+            '{revisionType: "AppSpecContent", appSpecContent: {content: $content}}' > revision.json
+
+          DEPLOYMENT_ID=$(aws deploy create-deployment \
+            --application-name "AppECS-${{ vars.ECS_CLUSTER }}-${{ vars.ECS_SERVICE }}" \
+            --deployment-group-name "DgpECS-${{ vars.ECS_CLUSTER }}-${{ vars.ECS_SERVICE }}" \
+            --revision file://revision.json \
+            --query deploymentId --output text)
+
+          echo "Deployment: $DEPLOYMENT_ID"
+          aws deploy wait deployment-successful --deployment-id "$DEPLOYMENT_ID"
