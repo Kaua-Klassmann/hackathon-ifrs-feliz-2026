@@ -4,7 +4,7 @@ WORKDIR /app
 
 COPY . .
 
-RUN cargo build --release
+RUN cargo build --release --workspace
 
 FROM alpine:3.22.5
 
