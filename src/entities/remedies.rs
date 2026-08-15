@@ -5,20 +5,18 @@ use serde::{Deserialize, Serialize};
 
 #[sea_orm::model]
 #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel, Serialize, Deserialize)]
-#[sea_orm(schema_name = "public", table_name = "users")]
+#[sea_orm(schema_name = "public", table_name = "remedies")]
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
     pub id: Uuid,
+    #[sea_orm(column_type = "Text")]
     pub name: String,
-    #[sea_orm(unique)]
-    pub email: String,
-    pub password: String,
     #[sea_orm(column_name = "createdAt")]
     pub created_at: DateTime,
     #[sea_orm(column_name = "updatedAt")]
     pub updated_at: DateTime,
     #[sea_orm(has_many)]
-    pub patients: HasMany<super::patients::Entity>,
+    pub patients_remedies: HasMany<super::patients_remedies::Entity>,
 }
 
 impl ActiveModelBehavior for ActiveModel {}

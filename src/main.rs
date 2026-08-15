@@ -16,6 +16,7 @@ mod routes;
 mod services;
 #[cfg(test)]
 mod tests;
+mod utils;
 
 #[tokio::main]
 async fn main() {
