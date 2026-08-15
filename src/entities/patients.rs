@@ -26,6 +26,8 @@ pub struct Model {
     #[sea_orm(column_name = "deletedAt")]
     pub deleted_at: Option<DateTime>,
     #[sea_orm(has_many)]
+    pub analyses: HasMany<super::analysis::Entity>,
+    #[sea_orm(has_many)]
     pub patients_remedies: HasMany<super::patients_remedies::Entity>,
     #[sea_orm(
         belongs_to,

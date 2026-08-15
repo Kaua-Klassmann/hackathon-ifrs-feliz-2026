@@ -36,7 +36,7 @@ pub struct CreatePayload {
 #[derive(Deserialize, Validate)]
 pub struct CreateRemediesPayload {
     remedy: Uuid,
-    #[validate(range(min = 0, message = "Quantidade deve ser no minimo 0"))]
+    #[validate(range(min = 1, message = "Quantidade deve ser no minimo 1"))]
     quantity: i32,
 }
 

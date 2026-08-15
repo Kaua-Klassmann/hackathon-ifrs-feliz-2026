@@ -119,7 +119,7 @@ mod create {
 }
 
 mod update_remedies {
-    use sea_orm::sqlx::types::Uuid;
+    use sea_orm::{entity::prelude::Date, sqlx::types::Uuid};
 
     use crate::{
         error::DomainError,
@@ -136,6 +136,8 @@ mod update_remedies {
             .returning(|_| {
                 Ok(Some(GetUserIdByPatientIdResponse {
                     id_user: Uuid::default(),
+                    is_male: true,
+                    birthdate: "2007-02-25".parse::<Date>().unwrap(),
                 }))
             });
         service
@@ -194,6 +196,8 @@ mod update_remedies {
             .returning(|_| {
                 Ok(Some(GetUserIdByPatientIdResponse {
                     id_user: Uuid::default(),
+                    is_male: true,
+                    birthdate: "2007-02-25".parse::<Date>().unwrap(),
                 }))
             });
         service
@@ -223,7 +227,7 @@ mod update_remedies {
 }
 
 mod delete {
-    use sea_orm::sqlx::types::Uuid;
+    use sea_orm::{entity::prelude::Date, sqlx::types::Uuid};
 
     use crate::{error::DomainError, repositories::patients::GetUserIdByPatientIdResponse};
 
@@ -237,6 +241,8 @@ mod delete {
             .returning(|_| {
                 Ok(Some(GetUserIdByPatientIdResponse {
                     id_user: Uuid::default(),
+                    is_male: true,
+                    birthdate: "2007-02-25".parse::<Date>().unwrap(),
                 }))
             });
         service
@@ -279,6 +285,8 @@ mod delete {
                     id_user: "00000000-0000-4000-0000-000000000001"
                         .parse::<Uuid>()
                         .unwrap(),
+                    is_male: true,
+                    birthdate: "2007-02-25".parse::<Date>().unwrap(),
                 }))
             });
 

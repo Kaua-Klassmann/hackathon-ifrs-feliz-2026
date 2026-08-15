@@ -4,6 +4,7 @@ use validator::ValidationErrors;
 
 #[cfg_attr(test, derive(Debug))]
 pub enum DomainError {
+    MetricsNotFound,
     InternalServerError(String),
     PatientNotFound,
     RemedyNotFound,
@@ -23,6 +24,10 @@ impl IntoResponse for DomainError {
                     Json(json!({"error": "Erro interno do servidor"})),
                 )
             }
+            DomainError::MetricsNotFound => (
+                StatusCode::NOT_FOUND,
+                Json(json!({"error": "Métricas não encontradas"})),
+            ),
             DomainError::PatientNotFound => (
                 StatusCode::NOT_FOUND,
                 Json(json!({"error": "Paciente não encontrado"})),

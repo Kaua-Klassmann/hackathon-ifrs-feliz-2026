@@ -58,6 +58,8 @@ pub struct CreatePatientRemediesPayload {
 #[sea_orm(entity = "patients::Entity")]
 pub struct GetUserIdByPatientIdResponse {
     pub id_user: Uuid,
+    pub is_male: bool,
+    pub birthdate: Date,
 }
 
 #[cfg_attr(test, mockall::automock)]
