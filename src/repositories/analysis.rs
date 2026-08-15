@@ -1,6 +1,6 @@
 use sea_orm::{
     ColumnTrait, Condition, DatabaseConnection, DbErr, DeriveIntoActiveModel, DerivePartialModel,
-    EntityTrait, IntoActiveModel, QueryFilter,
+    EntityTrait, IntoActiveModel, QueryFilter, QueryOrder,
     entity::prelude::Date,
     sqlx::types::{Decimal, Uuid},
 };
@@ -83,6 +83,7 @@ impl AnalysisRepositoryTrait for AnalysisRepository {
                     .add(analysis::Column::IdPatient.eq(patient_id))
                     .add(analysis::Column::DeletedAt.is_null()),
             )
+            .order_by_asc(analysis::Column::CreatedAt)
             .into_partial_model::<ListAnalysisPayload>()
             .all(&self.db)
             .await?;

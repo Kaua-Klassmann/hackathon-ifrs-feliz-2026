@@ -4,6 +4,7 @@ use axum::routing::get;
 
 mod analysis;
 mod auth;
+mod metrics;
 mod patients;
 mod remedies;
 
@@ -14,4 +15,5 @@ pub fn configure_routes() -> Router {
         .nest("/patients", patients::configure_routes())
         .nest("/remedies", remedies::configure_routes())
         .nest("/analysis", analysis::configure_routes())
+        .nest("/metrics", metrics::configure_routes())
 }

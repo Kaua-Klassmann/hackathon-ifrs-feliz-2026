@@ -2,10 +2,11 @@ use sea_orm::{
     ColumnTrait, Condition, DatabaseConnection, DbErr, DerivePartialModel, EntityTrait,
     QueryFilter, sqlx::types::Decimal,
 };
+use serde::Serialize;
 
 use crate::{connections::database, entities::metrics};
 
-#[derive(DerivePartialModel)]
+#[derive(DerivePartialModel, Serialize)]
 #[sea_orm(entity = "metrics::Entity")]
 pub struct GetMetricsResponse {
     pub velocity: Decimal,
