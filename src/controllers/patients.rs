@@ -76,6 +76,36 @@ impl PatientsController {
         }
     }
 
+    pub async fn update_remedies(
+        State(service): State<Arc<PatientsService>>,
+        token: JwtClaims,
+        Path(patient_id): Path<Uuid>,
+        Json(payload): Json<Vec<CreateRemediesPayload>>,
+    ) -> impl IntoResponse {
+        if let Err(errors) = payload.validate() {
+            return DomainError::UnprocessableEntity(errors).into_response();
+        }
+
+        let result = service
+            .update_remedies(
+                token.user_id,
+                patient_id,
+                payload
+                    .into_iter()
+                    .map(|r| CreatePatientRemediesPayload {
+                        remedy: r.remedy,
+                        quantity: r.quantity,
+                    })
+                    .collect::<Vec<CreatePatientRemediesPayload>>(),
+            )
+            .await;
+
+        match result {
+            Ok(_) => (StatusCode::NO_CONTENT, Json(())).into_response(),
+            Err(err) => err.into_response(),
+        }
+    }
+
     pub async fn delete(
         State(service): State<Arc<PatientsService>>,
         token: JwtClaims,

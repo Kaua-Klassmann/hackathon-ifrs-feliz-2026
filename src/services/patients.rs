@@ -2,7 +2,7 @@ use sea_orm::sqlx::types::Uuid;
 
 use crate::error::DomainError;
 use crate::repositories::patients::{
-    CreatePatientPayload, PatientsRepository, PatientsRepositoryTrait,
+    CreatePatientPayload, CreatePatientRemediesPayload, PatientsRepository, PatientsRepositoryTrait,
 };
 use crate::repositories::remedies::{RemediesRepository, RemediesRepositoryTrait};
 pub struct PatientsService<
@@ -49,6 +49,34 @@ impl<PR: PatientsRepositoryTrait, RR: RemediesRepositoryTrait> PatientsService<P
             .map_err(|err| DomainError::InternalServerError(err.to_string()))?;
 
         Ok(patient)
+    }
+
+    pub async fn update_remedies(
+        &self,
+        user_id: Uuid,
+        patient_id: Uuid,
+        remedies: Vec<CreatePatientRemediesPayload>,
+    ) -> Result<(), DomainError> {
+        let exists = self
+            .patient_repository
+            .get_user_id_by_patient_id(patient_id)
+            .await
+            .map_err(|err| DomainError::InternalServerError(err.to_string()))?;
+
+        let Some(patient) = exists else {
+            return Err(DomainError::PatientNotFound);
+        };
+
+        if patient.id_user != user_id {
+            return Err(DomainError::UserNotAuthorized);
+        }
+
+        self.patient_repository
+            .update_remedies(patient_id, remedies)
+            .await
+            .map_err(|err| DomainError::InternalServerError(err.to_string()))?;
+
+        Ok(())
     }
 
     pub async fn delete(&self, user_id: Uuid, patient_id: Uuid) -> Result<(), DomainError> {

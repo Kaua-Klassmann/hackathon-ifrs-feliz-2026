@@ -100,6 +100,110 @@ mod create {
     }
 }
 
+mod update_remedies {
+    use sea_orm::sqlx::types::Uuid;
+
+    use crate::{
+        error::DomainError,
+        repositories::patients::{CreatePatientRemediesPayload, GetUserIdByPatientIdResponse},
+    };
+
+    #[tokio::test]
+    async fn success() {
+        let mut service = super::factory();
+
+        service
+            .patient_repository
+            .expect_get_user_id_by_patient_id()
+            .returning(|_| {
+                Ok(Some(GetUserIdByPatientIdResponse {
+                    id_user: Uuid::default(),
+                }))
+            });
+        service
+            .patient_repository
+            .expect_update_remedies()
+            .returning(|_, _| Ok(()));
+
+        let result = service
+            .update_remedies(
+                Uuid::default(),
+                Uuid::default(),
+                vec![CreatePatientRemediesPayload {
+                    remedy: Uuid::default(),
+                    quantity: 1,
+                }],
+            )
+            .await;
+
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn error_patient_not_found() {
+        let mut service = super::factory();
+
+        service
+            .patient_repository
+            .expect_get_user_id_by_patient_id()
+            .returning(|_| Ok(None));
+
+        let result = service
+            .update_remedies(
+                Uuid::default(),
+                Uuid::default(),
+                vec![CreatePatientRemediesPayload {
+                    remedy: Uuid::default(),
+                    quantity: 1,
+                }],
+            )
+            .await;
+
+        assert!(result.is_err());
+        assert!(matches!(
+            result.err().unwrap(),
+            DomainError::PatientNotFound
+        ));
+    }
+
+    #[tokio::test]
+    async fn error_user_id_mismatch() {
+        let mut service = super::factory();
+
+        service
+            .patient_repository
+            .expect_get_user_id_by_patient_id()
+            .returning(|_| {
+                Ok(Some(GetUserIdByPatientIdResponse {
+                    id_user: Uuid::default(),
+                }))
+            });
+        service
+            .patient_repository
+            .expect_update_remedies()
+            .returning(|_, _| Ok(()));
+
+        let result = service
+            .update_remedies(
+                "00000000-0000-4000-0000-000000000001"
+                    .parse::<Uuid>()
+                    .unwrap(),
+                Uuid::default(),
+                vec![CreatePatientRemediesPayload {
+                    remedy: Uuid::default(),
+                    quantity: 1,
+                }],
+            )
+            .await;
+
+        assert!(result.is_err());
+        assert!(matches!(
+            result.err().unwrap(),
+            DomainError::UserNotAuthorized
+        ));
+    }
+}
+
 mod delete {
     use sea_orm::sqlx::types::Uuid;
 

@@ -37,6 +37,11 @@ pub trait PatientsRepositoryTrait {
         &self,
         patient_id: Uuid,
     ) -> Result<Option<GetUserIdByPatientIdResponse>, DbErr>;
+    async fn update_remedies(
+        &self,
+        patient_id: Uuid,
+        remedies: Vec<CreatePatientRemediesPayload>,
+    ) -> Result<(), DbErr>;
     async fn delete(&self, patient_id: Uuid) -> Result<(), DbErr>;
 }
 
@@ -111,6 +116,45 @@ impl PatientsRepositoryTrait for PatientsRepository {
             .await?;
 
         Ok(patient)
+    }
+
+    async fn update_remedies(
+        &self,
+        patient_id: Uuid,
+        remedies: Vec<CreatePatientRemediesPayload>,
+    ) -> Result<(), DbErr> {
+        let txn = self.db.begin().await?;
+
+        if let Err(err) = patients_remedies::Entity::update_many()
+            .col_expr(
+                patients_remedies::Column::DeletedAt,
+                Expr::val(Some(chrono::Utc::now().naive_utc())),
+            )
+            .filter(patients_remedies::Column::IdPatient.eq(patient_id))
+            .exec(&txn)
+            .await
+        {
+            txn.rollback().await?;
+            return Err(err);
+        }
+
+        patients_remedies::Entity::insert_many(
+            remedies
+                .into_iter()
+                .map(|remedy| patients_remedies::ActiveModel {
+                    id_patient: Set(patient_id),
+                    id_remedy: Set(remedy.remedy),
+                    quantity: Set(remedy.quantity),
+                    ..Default::default()
+                })
+                .collect::<Vec<patients_remedies::ActiveModel>>(),
+        )
+        .exec(&txn)
+        .await?;
+
+        txn.commit().await?;
+
+        Ok(())
     }
 
     async fn delete(&self, patient_id: Uuid) -> Result<(), DbErr> {
