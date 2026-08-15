@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use axum::routing::{delete, put};
+use axum::routing::{delete, get, put};
 use axum::{Router, routing::post};
 
 use crate::controllers::patients::PatientsController;
@@ -10,6 +10,7 @@ pub fn configure_routes() -> Router {
     let patients_service = Arc::new(PatientsService::new());
 
     Router::new()
+        .route("/", get(PatientsController::list))
         .route("/", post(PatientsController::create))
         .route(
             "/{patient_id}/remedies",

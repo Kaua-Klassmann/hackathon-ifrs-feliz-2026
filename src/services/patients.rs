@@ -2,7 +2,8 @@ use sea_orm::sqlx::types::Uuid;
 
 use crate::error::DomainError;
 use crate::repositories::patients::{
-    CreatePatientPayload, CreatePatientRemediesPayload, PatientsRepository, PatientsRepositoryTrait,
+    CreatePatientPayload, CreatePatientRemediesPayload, ListPatientsResponse, PatientsRepository,
+    PatientsRepositoryTrait,
 };
 use crate::repositories::remedies::{RemediesRepository, RemediesRepositoryTrait};
 pub struct PatientsService<
@@ -23,6 +24,16 @@ impl PatientsService<PatientsRepository, RemediesRepository> {
 }
 
 impl<PR: PatientsRepositoryTrait, RR: RemediesRepositoryTrait> PatientsService<PR, RR> {
+    pub async fn list(&self, user_id: Uuid) -> Result<Vec<ListPatientsResponse>, DomainError> {
+        let patients = self
+            .patient_repository
+            .list(user_id)
+            .await
+            .map_err(|err| DomainError::InternalServerError(err.to_string()))?;
+
+        Ok(patients)
+    }
+
     pub async fn create(&self, payload: CreatePatientPayload) -> Result<Uuid, DomainError> {
         let remedies = payload
             .remedies

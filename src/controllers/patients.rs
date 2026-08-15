@@ -43,6 +43,18 @@ pub struct CreateRemediesPayload {
 pub struct PatientsController;
 
 impl PatientsController {
+    pub async fn list(
+        State(service): State<Arc<PatientsService>>,
+        token: JwtClaims,
+    ) -> impl IntoResponse {
+        let result = service.list(token.user_id).await;
+
+        match result {
+            Ok(patients) => (StatusCode::OK, Json(patients)).into_response(),
+            Err(err) => err.into_response(),
+        }
+    }
+
     pub async fn create(
         State(service): State<Arc<PatientsService>>,
         token: JwtClaims,

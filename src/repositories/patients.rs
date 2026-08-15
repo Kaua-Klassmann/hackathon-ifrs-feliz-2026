@@ -1,14 +1,44 @@
 use sea_orm::{
-    ColumnTrait, DatabaseConnection, DbErr, DerivePartialModel, EntityTrait, QueryFilter, Set,
-    TransactionTrait,
+    ColumnTrait, Condition, DatabaseConnection, DbErr, DerivePartialModel, EntityTrait,
+    FromQueryResult, QueryFilter, QuerySelect, Set, TransactionTrait,
+    entity::prelude::Date,
     sea_query::Expr,
     sqlx::types::{Uuid, chrono},
 };
+use serde::{Deserialize, Serialize};
+use serde_json::Value;
 
 use crate::{
     connections::database,
     entities::{patients, patients_remedies, sea_orm_active_enums::PatientBloodType},
 };
+
+#[derive(FromQueryResult)]
+struct ListPatientsQuery {
+    pub id: Uuid,
+    pub name: String,
+    pub birthdate: Date,
+    pub is_male: bool,
+    pub blood_type: PatientBloodType,
+    pub remedies: Value,
+}
+
+#[derive(Serialize)]
+pub struct ListPatientsResponse {
+    pub id: Uuid,
+    pub name: String,
+    pub birthdate: Date,
+    pub is_male: bool,
+    pub blood_type: PatientBloodType,
+    pub remedies: Vec<ListPatientsRemediesResponse>,
+}
+
+#[derive(Deserialize, Serialize)]
+pub struct ListPatientsRemediesResponse {
+    pub id: Uuid,
+    pub remedy: String,
+    pub quantity: i32,
+}
 
 pub struct CreatePatientPayload {
     pub name: String,
@@ -32,6 +62,7 @@ pub struct GetUserIdByPatientIdResponse {
 
 #[cfg_attr(test, mockall::automock)]
 pub trait PatientsRepositoryTrait {
+    async fn list(&self, user_id: Uuid) -> Result<Vec<ListPatientsResponse>, DbErr>;
     async fn create(&self, payload: CreatePatientPayload) -> Result<Uuid, DbErr>;
     async fn get_user_id_by_patient_id(
         &self,
@@ -58,6 +89,63 @@ impl PatientsRepository {
 }
 
 impl PatientsRepositoryTrait for PatientsRepository {
+    async fn list(&self, user_id: Uuid) -> Result<Vec<ListPatientsResponse>, DbErr> {
+        let result = patients::Entity::find()
+            .select_only()
+            .columns([
+                patients::Column::Id,
+                patients::Column::Name,
+                patients::Column::Birthdate,
+            ])
+            .column_as(patients::Column::IsMale, "is_male")
+            .column_as(patients::Column::BloodType, "blood_type")
+            .column_as(
+                Expr::cust(
+                    r#"
+                    COALESCE(
+                        (
+                            SELECT JSON_AGG(JSON_BUILD_OBJECT(
+                                'id', patients_remedies.id,
+                                'remedy', remedies.name,
+                                'quantity', patients_remedies.quantity
+                            ))
+                            FROM patients_remedies
+                            JOIN remedies ON remedies.id = patients_remedies."idRemedy"
+                            WHERE patients_remedies."idPatient" = patients.id
+                                AND patients_remedies."deletedAt" IS NULL
+                        )
+                    , '[]'::json)
+                    "#,
+                ),
+                "remedies",
+            )
+            .filter(
+                Condition::all()
+                    .add(patients::Column::IdUser.eq(user_id))
+                    .add(patients::Column::DeletedAt.is_null()),
+            )
+            .into_model::<ListPatientsQuery>()
+            .all(&self.db)
+            .await?;
+
+        let r = result
+            .into_iter()
+            .map(|patient| ListPatientsResponse {
+                id: patient.id,
+                name: patient.name,
+                birthdate: patient.birthdate,
+                is_male: patient.is_male,
+                blood_type: patient.blood_type,
+                remedies: serde_json::from_value::<Vec<ListPatientsRemediesResponse>>(
+                    patient.remedies,
+                )
+                .unwrap(),
+            })
+            .collect::<Vec<ListPatientsResponse>>();
+
+        Ok(r)
+    }
+
     async fn create(&self, payload: CreatePatientPayload) -> Result<Uuid, DbErr> {
         let txn = self.db.begin().await?;
 

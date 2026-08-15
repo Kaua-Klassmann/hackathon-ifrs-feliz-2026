@@ -10,6 +10,24 @@ fn factory() -> PatientsService<MockPatientsRepositoryTrait, MockRemediesReposit
     }
 }
 
+mod list {
+    use sea_orm::sqlx::types::Uuid;
+
+    #[tokio::test]
+    async fn success() {
+        let mut service = super::factory();
+
+        service
+            .patient_repository
+            .expect_list()
+            .returning(|_| Ok(vec![]));
+
+        let result = service.list(Uuid::default()).await;
+
+        assert!(result.is_ok());
+    }
+}
+
 mod create {
     use sea_orm::{entity::prelude::Date, sqlx::types::Uuid};
 
