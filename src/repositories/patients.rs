@@ -1,5 +1,7 @@
 use sea_orm::{
-    DatabaseConnection, DbErr, EntityTrait, Set, TransactionTrait,
+    ColumnTrait, DatabaseConnection, DbErr, DerivePartialModel, EntityTrait, QueryFilter, Set,
+    TransactionTrait,
+    sea_query::Expr,
     sqlx::types::{Uuid, chrono},
 };
 
@@ -22,9 +24,20 @@ pub struct CreatePatientRemediesPayload {
     pub quantity: i32,
 }
 
+#[derive(DerivePartialModel)]
+#[sea_orm(entity = "patients::Entity")]
+pub struct GetUserIdByPatientIdResponse {
+    pub id_user: Uuid,
+}
+
 #[cfg_attr(test, mockall::automock)]
 pub trait PatientsRepositoryTrait {
     async fn create(&self, payload: CreatePatientPayload) -> Result<Uuid, DbErr>;
+    async fn get_user_id_by_patient_id(
+        &self,
+        patient_id: Uuid,
+    ) -> Result<Option<GetUserIdByPatientIdResponse>, DbErr>;
+    async fn delete(&self, patient_id: Uuid) -> Result<(), DbErr>;
 }
 
 pub struct PatientsRepository {
@@ -85,5 +98,52 @@ impl PatientsRepositoryTrait for PatientsRepository {
         txn.commit().await?;
 
         Ok(result.last_insert_id)
+    }
+
+    async fn get_user_id_by_patient_id(
+        &self,
+        patient_id: Uuid,
+    ) -> Result<Option<GetUserIdByPatientIdResponse>, DbErr> {
+        let patient = patients::Entity::find_by_id(patient_id)
+            .filter(patients::Column::DeletedAt.is_null())
+            .into_partial_model::<GetUserIdByPatientIdResponse>()
+            .one(&self.db)
+            .await?;
+
+        Ok(patient)
+    }
+
+    async fn delete(&self, patient_id: Uuid) -> Result<(), DbErr> {
+        let txn = self.db.begin().await?;
+
+        if let Err(err) = patients_remedies::Entity::update_many()
+            .col_expr(
+                patients::Column::DeletedAt,
+                Expr::val(Some(chrono::Utc::now().naive_utc())),
+            )
+            .filter(patients_remedies::Column::IdPatient.eq(patient_id))
+            .exec(&txn)
+            .await
+        {
+            txn.rollback().await?;
+            return Err(err);
+        }
+
+        if let Err(err) = patients::Entity::update_many()
+            .col_expr(
+                patients::Column::DeletedAt,
+                Expr::val(Some(chrono::Utc::now().naive_utc())),
+            )
+            .filter(patients::Column::Id.eq(patient_id))
+            .exec(&txn)
+            .await
+        {
+            txn.rollback().await?;
+            return Err(err);
+        }
+
+        txn.commit().await?;
+
+        Ok(())
     }
 }

@@ -5,10 +5,12 @@ use validator::ValidationErrors;
 #[cfg_attr(test, derive(Debug))]
 pub enum DomainError {
     InternalServerError(String),
+    PatientNotFound,
     RemedyNotFound,
     UnprocessableEntity(ValidationErrors),
     UserAlreadyExists,
     UserInvalidCredentials,
+    UserNotAuthorized,
 }
 
 impl IntoResponse for DomainError {
@@ -21,6 +23,10 @@ impl IntoResponse for DomainError {
                     Json(json!({"error": "Erro interno do servidor"})),
                 )
             }
+            DomainError::PatientNotFound => (
+                StatusCode::NOT_FOUND,
+                Json(json!({"error": "Paciente não encontrado"})),
+            ),
             DomainError::RemedyNotFound => (
                 StatusCode::NOT_FOUND,
                 Json(json!({"error": "Remédio não encontrado"})),
@@ -32,6 +38,10 @@ impl IntoResponse for DomainError {
             DomainError::UserInvalidCredentials => (
                 StatusCode::UNAUTHORIZED,
                 Json(json!({"error": "Credenciais inválidas"})),
+            ),
+            DomainError::UserNotAuthorized => (
+                StatusCode::FORBIDDEN,
+                Json(json!({"error": "Usuário não autorizado"})),
             ),
             DomainError::UnprocessableEntity(err) => {
                 (StatusCode::UNPROCESSABLE_ENTITY, Json(json!(err)))

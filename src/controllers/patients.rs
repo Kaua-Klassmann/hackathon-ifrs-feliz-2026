@@ -1,10 +1,15 @@
 use std::sync::Arc;
 
 use crate::{
-    entities::sea_orm_active_enums::PatientBloodType,
+    entities::sea_orm_active_enums::PatientBloodType, jwt::JwtClaims,
     repositories::patients::CreatePatientRemediesPayload, utils::validate_iso_date,
 };
-use axum::{Json, extract::State, http::StatusCode, response::IntoResponse};
+use axum::{
+    Json,
+    extract::{Path, State},
+    http::StatusCode,
+    response::IntoResponse,
+};
 use sea_orm::entity::prelude::{Date, Uuid};
 use serde::Deserialize;
 use validator::Validate;
@@ -24,7 +29,6 @@ pub struct CreatePayload {
     ))]
     birth_date: String,
     blood_type: PatientBloodType,
-    id_user: Uuid,
     is_male: bool,
     remedies: Vec<CreateRemediesPayload>,
 }
@@ -41,6 +45,7 @@ pub struct PatientsController;
 impl PatientsController {
     pub async fn create(
         State(service): State<Arc<PatientsService>>,
+        token: JwtClaims,
         Json(payload): Json<CreatePayload>,
     ) -> impl IntoResponse {
         if let Err(errors) = payload.validate() {
@@ -52,7 +57,7 @@ impl PatientsController {
                 name: payload.name,
                 birthdate: payload.birth_date.parse::<Date>().unwrap(),
                 blood_type: payload.blood_type,
-                id_user: payload.id_user,
+                id_user: token.user_id,
                 is_male: payload.is_male,
                 remedies: payload
                     .remedies
@@ -67,6 +72,19 @@ impl PatientsController {
 
         match result {
             Ok(patient_id) => (StatusCode::CREATED, Json(patient_id)).into_response(),
+            Err(err) => err.into_response(),
+        }
+    }
+
+    pub async fn delete(
+        State(service): State<Arc<PatientsService>>,
+        token: JwtClaims,
+        Path(patient_id): Path<Uuid>,
+    ) -> impl IntoResponse {
+        let result = service.delete(token.user_id, patient_id).await;
+
+        match result {
+            Ok(_) => (StatusCode::NO_CONTENT, Json(())).into_response(),
             Err(err) => err.into_response(),
         }
     }

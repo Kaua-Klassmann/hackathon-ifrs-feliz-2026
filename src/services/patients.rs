@@ -50,4 +50,27 @@ impl<PR: PatientsRepositoryTrait, RR: RemediesRepositoryTrait> PatientsService<P
 
         Ok(patient)
     }
+
+    pub async fn delete(&self, user_id: Uuid, patient_id: Uuid) -> Result<(), DomainError> {
+        let exists = self
+            .patient_repository
+            .get_user_id_by_patient_id(patient_id)
+            .await
+            .map_err(|err| DomainError::InternalServerError(err.to_string()))?;
+
+        let Some(patient) = exists else {
+            return Err(DomainError::PatientNotFound);
+        };
+
+        if patient.id_user != user_id {
+            return Err(DomainError::UserNotAuthorized);
+        }
+
+        self.patient_repository
+            .delete(patient_id)
+            .await
+            .map_err(|err| DomainError::InternalServerError(err.to_string()))?;
+
+        Ok(())
+    }
 }
