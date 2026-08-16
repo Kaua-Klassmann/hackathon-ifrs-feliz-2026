@@ -169,18 +169,18 @@ impl PatientsRepositoryTrait for PatientsRepository {
             }
         };
 
-        let remedies = payload
-            .remedies
-            .into_iter()
-            .map(|remedy| patients_remedies::ActiveModel {
-                id_patient: Set(result.last_insert_id),
-                id_remedy: Set(remedy.remedy),
-                quantity: Set(remedy.quantity),
-                ..Default::default()
-            })
-            .collect::<Vec<patients_remedies::ActiveModel>>();
+        if !payload.remedies.is_empty() {
+            let remedies = payload
+                .remedies
+                .into_iter()
+                .map(|remedy| patients_remedies::ActiveModel {
+                    id_patient: Set(result.last_insert_id),
+                    id_remedy: Set(remedy.remedy),
+                    quantity: Set(remedy.quantity),
+                    ..Default::default()
+                })
+                .collect::<Vec<patients_remedies::ActiveModel>>();
 
-        if !remedies.is_empty() {
             if let Err(err) = patients_remedies::Entity::insert_many(remedies)
                 .exec(&txn)
                 .await

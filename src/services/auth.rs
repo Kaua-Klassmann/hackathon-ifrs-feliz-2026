@@ -41,7 +41,7 @@ impl<UR: UsersRepositoryTrait> AuthService<UR> {
         let password_verified = self.argon2.verify_password(
             password.as_bytes(),
             &PasswordHash::new(
-                &user_option
+                user_option
                     .as_ref()
                     .map(|u| &u.password)
                     .unwrap_or(&"$argon2id$v=19$m=19456,t=2,p=1$ZHVtbXktc2FsdC0xMjM0NTY$y7J8J6XKQK3m6YQx5XwJvQ8vQmYQh6jXQ5Q5XQ5Q5Q5Q".to_string()),
