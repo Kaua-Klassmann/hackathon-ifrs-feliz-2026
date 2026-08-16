@@ -23,8 +23,8 @@ impl MigrationTrait for Migration {
                         60.into(),
                         69.into(),
                         true.into(),
-                        1.34.into(),
-                        4.5.into(),
+                        0.6.into(),
+                        10.into(),
                         8.into(),
                         112.into(),
                         11.4.into(),
@@ -34,8 +34,8 @@ impl MigrationTrait for Migration {
                         60.into(),
                         69.into(),
                         false.into(),
-                        1.24.into(),
-                        4.8.into(),
+                        0.6.into(),
+                        10.into(),
                         10.into(),
                         115.into(),
                         11.4.into(),
@@ -45,8 +45,8 @@ impl MigrationTrait for Migration {
                         70.into(),
                         74.into(),
                         true.into(),
-                        1.26.into(),
-                        4.8.into(),
+                        0.55.into(),
+                        10.91.into(),
                         9.into(),
                         107.into(),
                         12.6.into(),
@@ -56,8 +56,8 @@ impl MigrationTrait for Migration {
                         70.into(),
                         74.into(),
                         false.into(),
-                        1.13.into(),
-                        5.3.into(),
+                        0.55.into(),
+                        10.91.into(),
                         10.into(),
                         112.into(),
                         12.6.into(),
@@ -67,8 +67,8 @@ impl MigrationTrait for Migration {
                         75.into(),
                         79.into(),
                         true.into(),
-                        1.26.into(),
-                        4.8.into(),
+                        0.5.into(),
+                        12.into(),
                         10.into(),
                         106.into(),
                         12.6.into(),
@@ -78,8 +78,8 @@ impl MigrationTrait for Migration {
                         75.into(),
                         79.into(),
                         false.into(),
-                        1.13.into(),
-                        5.3.into(),
+                        0.5.into(),
+                        12.into(),
                         11.into(),
                         111.into(),
                         12.6.into(),
@@ -89,8 +89,8 @@ impl MigrationTrait for Migration {
                         80.into(),
                         84.into(),
                         true.into(),
-                        0.97.into(),
-                        6.2.into(),
+                        0.45.into(),
+                        13.33.into(),
                         10.into(),
                         104.into(),
                         14.8.into(),
@@ -100,8 +100,8 @@ impl MigrationTrait for Migration {
                         80.into(),
                         84.into(),
                         false.into(),
-                        0.94.into(),
-                        6.4.into(),
+                        0.45.into(),
+                        13.33.into(),
                         12.into(),
                         109.into(),
                         14.8.into(),
@@ -111,8 +111,8 @@ impl MigrationTrait for Migration {
                         85.into(),
                         120.into(),
                         true.into(),
-                        0.97.into(),
-                        6.2.into(),
+                        0.4.into(),
+                        15.into(),
                         11.into(),
                         101.into(),
                         14.8.into(),
@@ -122,8 +122,8 @@ impl MigrationTrait for Migration {
                         85.into(),
                         120.into(),
                         false.into(),
-                        0.94.into(),
-                        6.4.into(),
+                        0.4.into(),
+                        15.into(),
                         13.into(),
                         106.into(),
                         14.8.into(),
@@ -136,8 +136,11 @@ impl MigrationTrait for Migration {
         Ok(())
     }
 
-    async fn down(&self, _manager: &SchemaManager) -> Result<(), DbErr> {
-        // Replace the sample below with your own migration scripts
-        todo!();
+    async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
+        manager
+            .exec_stmt(Query::delete().from_table("metrics").to_owned())
+            .await?;
+
+        Ok(())
     }
 }
