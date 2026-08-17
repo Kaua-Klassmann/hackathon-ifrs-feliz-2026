@@ -1579,6 +1579,7 @@ dependencies = [
  "axum-extra",
  "dotenvy",
  "jsonwebtoken",
+ "migration",
  "mockall",
  "sea-orm",
  "serde",
