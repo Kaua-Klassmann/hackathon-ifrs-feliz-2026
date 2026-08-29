@@ -1,0 +1,102 @@
+name: Deploy
+
+on:
+  push:
+    branches: [develop, main]
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: ${{ github.ref_name == 'main' && 'prod' || 'dev' }}
+    env:
+      AWS_REGION: us-east-1
+      ECR_REPOSITORY: hackathon-api
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - uses: aws-actions/amazon-ecr-login@v2
+        id: ecr
+
+      - name: Build image
+        run: |
+          docker build -t ${{ steps.ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }} .
+
+      - name: Push image
+        run: |
+          docker push ${{ steps.ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }}
+
+      - uses: aws-actions/amazon-ecs-render-task-definition@v1
+        id: render
+        with:
+          task-definition-family: ${{ vars.ECS_CLUSTER }}
+          container-name: ${{ vars.ECS_CLUSTER }}
+          image: ${{ steps.ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }}
+
+      - name: Register task definition
+        id: register-task-def
+        run: |
+          TASK_DEF_ARN=$(aws ecs register-task-definition \
+            --cli-input-json file://${{ steps.render.outputs.task-definition }} \
+            --query "taskDefinition.taskDefinitionArn" --output text)
+          echo "arn=$TASK_DEF_ARN" >> "$GITHUB_OUTPUT"
+
+      - name: Run database migrations
+        run: |
+          NETWORK_CONFIG=$(aws ecs describe-services \
+            --cluster ${{ vars.ECS_CLUSTER }} --services ${{ vars.ECS_SERVICE }} \
+            --query "services[0].networkConfiguration" --output json)
+
+          TASK_ARN=$(aws ecs run-task \
+            --cluster ${{ vars.ECS_CLUSTER }} \
+            --task-definition ${{ steps.register-task-def.outputs.arn }} \
+            --launch-type FARGATE \
+            --network-configuration "$NETWORK_CONFIG" \
+            --overrides "{\"containerOverrides\":[{\"name\":\"${{ vars.ECS_CLUSTER }}\",\"command\":[\"migration\",\"up\"]}]}" \
+            --query "tasks[0].taskArn" --output text)
+
+          echo "Migration task: $TASK_ARN"
+          aws ecs wait tasks-stopped --cluster ${{ vars.ECS_CLUSTER }} --tasks "$TASK_ARN"
+
+          EXIT_CODE=$(aws ecs describe-tasks --cluster ${{ vars.ECS_CLUSTER }} --tasks "$TASK_ARN" \
+            --query "tasks[0].containers[0].exitCode" --output text)
+
+          if [ "$EXIT_CODE" != "0" ]; then
+            echo "Migration failed with exit code $EXIT_CODE — aborting deploy."
+            exit 1
+          fi
+
+      - name: Deploy via CodeDeploy (Blue/Green)
+        run: |
+          cat > appspec.yaml <<EOF
+          version: 0.0
+          Resources:
+            - TargetService:
+                Type: AWS::ECS::Service
+                Properties:
+                  TaskDefinition: "${{ steps.register-task-def.outputs.arn }}"
+                  LoadBalancerInfo:
+                    ContainerName: "${{ vars.ECS_CLUSTER }}"
+                    ContainerPort: 8080
+          EOF
+
+          jq -n --arg content "$(cat appspec.yaml)" \
+            '{revisionType: "AppSpecContent", appSpecContent: {content: $content}}' > revision.json
+
+          DEPLOYMENT_ID=$(aws deploy create-deployment \
+            --application-name "AppECS-${{ vars.ECS_CLUSTER }}-${{ vars.ECS_SERVICE }}" \
+            --deployment-group-name "DgpECS-${{ vars.ECS_CLUSTER }}-${{ vars.ECS_SERVICE }}" \
+            --revision file://revision.json \
+            --query deploymentId --output text)
+
+          echo "Deployment: $DEPLOYMENT_ID"
+          aws deploy wait deployment-successful --deployment-id "$DEPLOYMENT_ID"

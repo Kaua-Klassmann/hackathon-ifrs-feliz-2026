@@ -9,5 +9,6 @@ pub async fn create_app() -> Router {
         .layer(middlewares::cors::get_cors())
         .layer(middlewares::body_limit::get_body_limit())
         .layer(middlewares::compression::get_compression())
+        .layer(axum::middleware::from_fn(middlewares::logger::logger))
         .layer(middlewares::error::get_catch())
 }

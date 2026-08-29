@@ -1,4 +1,4 @@
-use migration::MigratorTrait;
+use migration::{Migrator, MigratorTrait};
 use sea_orm::{Database, DatabaseConnection};
 use tokio::sync::OnceCell;
 
@@ -15,9 +15,9 @@ pub(super) async fn init_database_connection() {
         .await
         .expect("Failed to connect on database");
 
-    migration::Migrator::up(&db, None)
+    Migrator::up(&db, None)
         .await
-        .expect("Failed to run migration on database");
+        .expect("Failed to run migrations");
 
     DB.set(db).unwrap()
 }

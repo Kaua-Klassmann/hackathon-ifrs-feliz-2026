@@ -3,6 +3,9 @@ name = "hackathon_backend"
 version = "0.1.0"
 edition = "2024"
 
+[profile.dev]
+debug = false
+
 [profile.release]
 lto = true
 strip = true
@@ -20,11 +23,13 @@ axum-extra = { version = "0.12.6", features = ["typed-header"] }
 dotenvy = "0.15.7"
 jsonwebtoken = { version = "10.4.0", features = ["rust_crypto"] }
 migration = { path = "./migration" }
-sea-orm = { version = "2.0.0", features = ["sqlx-postgres", "runtime-tokio"] }
+sea-orm = { version = "2.0.0", features = ["sqlx-postgres", "runtime-tokio-rustls"] }
 serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1.0.150"
 tokio = { version = "1.52.3", features = ["rt-multi-thread", "macros", "sync"] }
 tower-http = { version = "0.7.0", features = ["catch-panic", "compression-full", "cors"] }
+tracing = "0.1.44"
+tracing-subscriber = { version = "0.3.23", features = ["json"] }
 validator = { version = "0.20.0", features = ["derive"] }
 
 [dev-dependencies]
